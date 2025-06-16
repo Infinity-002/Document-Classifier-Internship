@@ -11,16 +11,12 @@ def main():
 
     args = parser.parse_args()
 
-    # Initialize clusterer
     clusterer = DocumentClustering(args.input, args.output)
 
-    # Run clustering with chosen config
     clusterer.run()
 
-    # Run evaluation
     metrics, evaluator = evaluate_clustering_system(clusterer)
 
-    # Print summary metrics
     print("\nClustering Evaluation Metrics:")
     for metric, value in metrics.items():
         print(f"  {metric}: {value:.4f}" if isinstance(value, float) else f"  {metric}: {value}")

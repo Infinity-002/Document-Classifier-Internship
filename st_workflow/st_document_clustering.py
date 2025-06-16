@@ -199,8 +199,8 @@ class DocumentClustering:
                 "davies_bouldin": float("inf"),
             }
 
-    def cluster_with_multiple_methods(self, embeddings):
-        """Try multiple clustering methods and select the best"""
+    def cluster(self, embeddings):
+        """Try multiple clustering (HDBSCAN) parameters and select the best"""
         methods = {}
 
         # HDBSCAN with different parameters
@@ -249,7 +249,7 @@ class DocumentClustering:
         return cluster_names
 
     def cluster_and_save(self):
-        """Save documents to cluster folders with meaningful names"""
+        """Save documents to cluster folders with names"""
         cluster_names = self.generate_cluster_names(self.labels)
         cluster_stats = Counter(self.labels)
 
@@ -306,7 +306,6 @@ class DocumentClustering:
         use_dimensionality_reduction=True,
         dim_reduction_method="umap",
     ):
-        """Enhanced run method with more options"""
         print("Starting document clustering pipeline...")
 
         # Step 1: Embed documents
@@ -324,9 +323,7 @@ class DocumentClustering:
             )
 
         print("Clustering...")
-        self.labels, self.best_clusterer = self.cluster_with_multiple_methods(
-            embeddings_for_clustering
-        )
+        self.labels, self.best_clusterer = self.cluster(embeddings_for_clustering)
 
         self.cluster_and_save()
         self.print_cluster_summary()
