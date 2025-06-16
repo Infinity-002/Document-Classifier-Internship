@@ -8,7 +8,7 @@ from sklearn.manifold import TSNE
 from sklearn.metrics import adjusted_rand_score, silhouette_score
 
 # --- Load saved clustering results ---
-with open("clustering_results.pkl", "rb") as f:
+with open("./d2v_workflow/clustering_results.pkl", "rb") as f:
     data = pickle.load(f)
 
 paths = data["paths"]
@@ -49,12 +49,12 @@ ari = adjusted_rand_score(true_labels, predicted_labels)
 sil_score = silhouette_score(vectors, label_ids) if len(set(label_ids)) > 1 else -1
 
 print(
-    f"📏 Silhouette Score: {sil_score:.4f}"
+    f"Silhouette Score: {sil_score:.4f}"
     if sil_score != -1
-    else "📏 Silhouette Score: Not applicable (only 1 cluster)"
+    else "Silhouette Score: Not applicable (only 1 cluster)"
 )
-print(f"🔍 Purity Score: {purity:.4f}")
-print(f"🎯 Adjusted Rand Index: {ari:.4f}")
+print(f"Purity Score: {purity:.4f}")
+print(f"Adjusted Rand Index: {ari:.4f}")
 
 # --- t-SNE Visualization ---
 perplexity = min(30, max(2, len(vectors) - 1))
