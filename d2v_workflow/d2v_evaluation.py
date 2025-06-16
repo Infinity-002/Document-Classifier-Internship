@@ -1,10 +1,11 @@
 import pickle
-import numpy as np
-import matplotlib.pyplot as plt
-from sklearn.manifold import TSNE
-from sklearn.metrics import adjusted_rand_score, silhouette_score
 from collections import Counter
 from pathlib import Path
+
+import matplotlib.pyplot as plt
+import numpy as np
+from sklearn.manifold import TSNE
+from sklearn.metrics import adjusted_rand_score, silhouette_score
 
 # --- Load saved clustering results ---
 with open("clustering_results.pkl", "rb") as f:
@@ -18,6 +19,7 @@ vectors = np.array(data["vectors"])
 label_map = {name: idx for idx, name in enumerate(sorted(set(predicted_labels)))}
 label_ids = [label_map[name] for name in predicted_labels]
 
+
 # --- Optional: Extract true labels from filenames ---
 def extract_true_labels(paths):
     labels = []
@@ -26,6 +28,7 @@ def extract_true_labels(paths):
         true_label = name.split("_")[0]  # assumes format like "sports_doc1.txt"
         labels.append(true_label)
     return labels
+
 
 # --- Purity Score ---
 def purity_score(y_true, y_pred):
@@ -38,13 +41,18 @@ def purity_score(y_true, y_pred):
     )
     return total / len(y_true)
 
+
 # --- Evaluation ---
 true_labels = extract_true_labels(paths)
 purity = purity_score(true_labels, predicted_labels)
 ari = adjusted_rand_score(true_labels, predicted_labels)
 sil_score = silhouette_score(vectors, label_ids) if len(set(label_ids)) > 1 else -1
 
-print(f"📏 Silhouette Score: {sil_score:.4f}" if sil_score != -1 else "📏 Silhouette Score: Not applicable (only 1 cluster)")
+print(
+    f"📏 Silhouette Score: {sil_score:.4f}"
+    if sil_score != -1
+    else "📏 Silhouette Score: Not applicable (only 1 cluster)"
+)
 print(f"🔍 Purity Score: {purity:.4f}")
 print(f"🎯 Adjusted Rand Index: {ari:.4f}")
 
