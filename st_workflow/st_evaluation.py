@@ -5,15 +5,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 from scipy.spatial.distance import cdist
-from sklearn.manifold import TSNE
 from sklearn.metrics import (
     calinski_harabasz_score,
     davies_bouldin_score,
-    silhouette_samples,
     silhouette_score,
 )
 from sklearn.metrics.pairwise import cosine_similarity
-from sklearn.neighbors import NearestNeighbors
+from umap import UMAP
 
 warnings.filterwarnings("ignore")
 
@@ -132,8 +130,14 @@ class ClusteringEvaluationDashboard:
         return intra_distances, inter_distances
 
     def plot_comprehensive_dashboard(self, save_path=None):
-        """Create a comprehensive evaluation dashboard"""
-        fig = plt.figure(figsize=(20, 16))
+        """Create a clean and optimized evaluation dashboard"""
+        fig = plt.figure(figsize=(18, 14))
+        fig.suptitle(
+            "Document Clustering Evaluation Dashboard",
+            fontsize=18,
+            fontweight="bold",
+            y=0.96,
+        )
 
         # Calculate metrics
         metrics = self.compute_all_metrics()
@@ -141,342 +145,154 @@ class ClusteringEvaluationDashboard:
             print(f"Error: {metrics['error']}")
             return
 
-        # 1. Silhouette Analysis
-        plt.subplot(3, 4, 1)
-        self.plot_silhouette_analysis()
+        # Create a 3x3 grid layout with more space
+        gs = fig.add_gridspec(
+            3, 3, hspace=0.35, wspace=0.25, left=0.08, right=0.92, top=0.92, bottom=0.08
+        )
 
-        # 2. Cluster Size Distribution
-        plt.subplot(3, 4, 2)
-        self.plot_cluster_size_distribution()
+        # 1. Cluster Size Distribution (top-left)
+        ax1 = fig.add_subplot(gs[0, 0])
+        self.plot_cluster_size_distribution(ax1)
 
-        # 3. Distance Distributions
-        plt.subplot(3, 4, 3)
-        self.plot_distance_distributions()
+        # 2. Distance Distributions (top-center)
+        ax2 = fig.add_subplot(gs[0, 1])
+        self.plot_distance_distributions(ax2)
 
-        # 4. Metrics Summary
-        plt.subplot(3, 4, 4)
-        self.plot_metrics_summary(metrics)
+        # 3. Document Type Distribution (top-right)
+        ax3 = fig.add_subplot(gs[0, 2])
+        self.plot_document_type_distribution(ax3)
 
-        # 5. 2D Embedding Visualization
-        plt.subplot(3, 4, 5)
-        self.plot_2d_embeddings()
+        # 4. UMAP Visualization (middle-left)
+        ax4 = fig.add_subplot(gs[1, 0])
+        self.plot_umap_embeddings(ax4)
 
-        # 6. Cluster Purity (if you have document types)
-        plt.subplot(3, 4, 6)
-        self.plot_cluster_purity()
+        # 5. Cluster Coherence (middle-right)
+        ax5 = fig.add_subplot(gs[1, 2])
+        self.plot_cluster_coherence(ax5)
 
-        # 7. Within-cluster similarity heatmap
-        plt.subplot(3, 4, 7)
-        self.plot_similarity_heatmap()
+        # 6. Similarity Heatmap (bottom-left)
+        ax6 = fig.add_subplot(gs[2, 0])
+        self.plot_similarity_heatmap(ax6)
 
-        # 8. Cluster stability
-        plt.subplot(3, 4, 8)
-        self.plot_cluster_coherence()
+        # 7. Individual Cluster Quality (bottom-center)
+        ax7 = fig.add_subplot(gs[2, 1])
+        self.plot_individual_cluster_quality(ax7)
 
-        # 9. Document type distribution per cluster
-        plt.subplot(3, 4, 9)
-        self.plot_document_type_distribution()
-
-        # 10. Nearest neighbor analysis
-        plt.subplot(3, 4, 10)
-        self.plot_nearest_neighbor_analysis()
-
-        # 11. Cluster quality scores
-        plt.subplot(3, 4, 11)
-        self.plot_cluster_quality_scores()
-
-        # 12. Summary statistics table
-        plt.subplot(3, 4, 12)
-        self.plot_summary_table(metrics)
-
-        plt.tight_layout()
+        # 8. Summary Statistics (bottom-right)
+        ax8 = fig.add_subplot(gs[2, 2])
+        self.plot_summary_statistics(ax8, metrics)
 
         if save_path:
-            plt.savefig(save_path, dpi=300, bbox_inches="tight")
+            plt.savefig(save_path, dpi=300, bbox_inches="tight", facecolor="white")
 
         plt.show()
-
         return metrics
 
-    def plot_silhouette_analysis(self):
-        """Plot silhouette analysis"""
-        if len(set(self.labels)) <= 1:
-            plt.text(0.5, 0.5, "No clusters found", ha="center", va="center")
-            plt.title("Silhouette Analysis")
-            return
-
-        # Filter noise points
-        mask = self.labels != -1
-        if np.sum(mask) <= 1:
-            plt.text(0.5, 0.5, "Insufficient data", ha="center", va="center")
-            plt.title("Silhouette Analysis")
-            return
-
-        sample_silhouette_values = silhouette_samples(
-            self.embeddings[mask], self.labels[mask]
-        )
-
-        y_lower = 10
-        for i, cluster_label in enumerate(sorted(set(self.labels[mask]))):
-            cluster_silhouette_values = sample_silhouette_values[
-                self.labels[mask] == cluster_label
-            ]
-            cluster_silhouette_values.sort()
-
-            size_cluster_i = cluster_silhouette_values.shape[0]
-            y_upper = y_lower + size_cluster_i
-
-            color = plt.cm.nipy_spectral(float(i) / len(set(self.labels[mask])))
-            plt.fill_betweenx(
-                np.arange(y_lower, y_upper),
-                0,
-                cluster_silhouette_values,
-                facecolor=color,
-                edgecolor=color,
-                alpha=0.7,
-            )
-
-            plt.text(-0.05, y_lower + 0.5 * size_cluster_i, str(cluster_label))
-            y_lower = y_upper + 10
-
-        plt.axvline(
-            x=silhouette_score(self.embeddings[mask], self.labels[mask]),
-            color="red",
-            linestyle="--",
-            label="Average Score",
-        )
-        plt.title("Silhouette Analysis")
-        plt.xlabel("Silhouette Coefficient Values")
-        plt.ylabel("Cluster Label")
-
-    def plot_cluster_size_distribution(self):
-        """Plot cluster size distribution"""
+    def plot_cluster_size_distribution(self, ax):
+        """Plot cluster size distribution with improved formatting"""
         cluster_sizes = Counter(self.labels)
         if -1 in cluster_sizes:
             del cluster_sizes[-1]  # Remove noise
 
         if not cluster_sizes:
-            plt.text(0.5, 0.5, "No clusters found", ha="center", va="center")
-            plt.title("Cluster Size Distribution")
+            ax.text(
+                0.5,
+                0.5,
+                "No clusters found",
+                ha="center",
+                va="center",
+                transform=ax.transAxes,
+                fontsize=12,
+            )
+            ax.set_title("Cluster Size Distribution", fontweight="bold", fontsize=11)
             return
 
         clusters, sizes = zip(*sorted(cluster_sizes.items()))
-        plt.bar(range(len(clusters)), sizes, color="skyblue", alpha=0.7)
-        plt.xlabel("Cluster ID")
-        plt.ylabel("Number of Documents")
-        plt.title("Cluster Size Distribution")
-        plt.xticks(range(len(clusters)), clusters)
+        bars = ax.bar(
+            range(len(clusters)),
+            sizes,
+            color="steelblue",
+            alpha=0.8,
+            edgecolor="navy",
+            linewidth=1,
+        )
+        ax.set_xlabel("Cluster ID", fontsize=10)
+        ax.set_ylabel("Number of Documents", fontsize=10)
+        ax.set_title("Cluster Size Distribution", fontweight="bold", fontsize=11)
+        ax.set_xticks(range(len(clusters)))
+        ax.set_xticklabels(clusters, fontsize=9)
+        ax.tick_params(axis="y", labelsize=9)
+        ax.grid(axis="y", alpha=0.3)
 
-        # Add value labels on bars
-        for i, v in enumerate(sizes):
-            plt.text(i, v + 0.1, str(v), ha="center")
+        # Add value labels on bars with better positioning
+        for bar, size in zip(bars, sizes):
+            height = bar.get_height()
+            ax.text(
+                bar.get_x() + bar.get_width() / 2,
+                height + max(sizes) * 0.01,
+                str(size),
+                ha="center",
+                va="bottom",
+                fontweight="bold",
+                fontsize=9,
+            )
 
-    def plot_distance_distributions(self):
-        """Plot intra vs inter cluster distance distributions"""
+    def plot_distance_distributions(self, ax):
+        """Plot intra vs inter cluster distance distributions with cleaner styling"""
         intra_distances, inter_distances = self.compute_cluster_distances()
 
         if not intra_distances and not inter_distances:
-            plt.text(0.5, 0.5, "Insufficient data", ha="center", va="center")
-            plt.title("Distance Distributions")
+            ax.text(
+                0.5,
+                0.5,
+                "Insufficient data",
+                ha="center",
+                va="center",
+                transform=ax.transAxes,
+                fontsize=12,
+            )
+            ax.set_title("Distance Distributions", fontweight="bold", fontsize=11)
             return
 
         if intra_distances:
-            plt.hist(
-                intra_distances, alpha=0.7, label="Intra-cluster", bins=20, color="red"
+            ax.hist(
+                intra_distances,
+                alpha=0.7,
+                label=f"Intra-cluster (n={len(intra_distances)})",
+                bins=min(15, len(intra_distances) // 2 + 1),
+                color="coral",
+                edgecolor="darkred",
             )
         if inter_distances:
-            plt.hist(
-                inter_distances, alpha=0.7, label="Inter-cluster", bins=20, color="blue"
-            )
-
-        plt.xlabel("Distance")
-        plt.ylabel("Frequency")
-        plt.title("Intra vs Inter-cluster Distances")
-        plt.legend()
-
-    def plot_metrics_summary(self, metrics):
-        """Plot key metrics as a bar chart"""
-        metric_names = [
-            "Silhouette\nScore",
-            "Calinski\nHarabasz",
-            "Davies\nBouldin",
-            "Separation\nRatio",
-        ]
-
-        # Normalize scores for visualization (all between 0-1, higher is better)
-        values = [
-            max(0, metrics.get("silhouette_score", 0)),  # -1 to 1 -> 0 to 1
-            min(
-                1, metrics.get("calinski_harabasz_score", 0) / 1000
-            ),  # Normalize by 1000
-            max(
-                0, 1 - min(1, metrics.get("davies_bouldin_score", float("inf")))
-            ),  # Invert (lower is better)
-            min(1, metrics.get("separation_ratio", 0) / 10),  # Normalize by 10
-        ]
-
-        colors = [
-            "green" if v > 0.5 else "orange" if v > 0.3 else "red" for v in values
-        ]
-        plt.bar(metric_names, values, color=colors, alpha=0.7)
-        plt.ylim(0, 1)
-        plt.title("Clustering Quality Metrics\n(Normalized, Higher=Better)")
-        plt.xticks(rotation=45)
-
-        # Add value labels
-        for i, v in enumerate(values):
-            plt.text(i, v + 0.02, f"{v:.3f}", ha="center")
-
-    def plot_2d_embeddings(self):
-        """Plot 2D embedding visualization"""
-        try:
-            if len(self.embeddings) < 4:
-                plt.text(0.5, 0.5, "Too few documents", ha="center", va="center")
-                plt.title("2D Embedding Visualization")
-                return
-
-            # Use t-SNE for visualization
-            tsne = TSNE(
-                n_components=2,
-                random_state=42,
-                perplexity=min(30, len(self.embeddings) - 1),
-            )
-            embeddings_2d = tsne.fit_transform(self.embeddings)
-
-            scatter = plt.scatter(
-                embeddings_2d[:, 0],
-                embeddings_2d[:, 1],
-                c=self.labels,
-                cmap="tab10",
+            ax.hist(
+                inter_distances,
                 alpha=0.7,
+                label=f"Inter-cluster (n={len(inter_distances)})",
+                bins=min(15, len(inter_distances) // 2 + 1),
+                color="lightgreen",
+                edgecolor="darkgreen",
             )
-            plt.title("2D Document Embedding Visualization")
-            plt.xlabel("t-SNE 1")
-            plt.ylabel("t-SNE 2")
 
-            # Add colorbar if there are clusters
-            if len(set(self.labels)) > 1:
-                plt.colorbar(scatter)
+        ax.set_xlabel("Cosine Distance", fontsize=10)
+        ax.set_ylabel("Frequency", fontsize=10)
+        ax.set_title("Intra vs Inter-cluster Distances", fontweight="bold", fontsize=11)
+        ax.legend(fontsize=9)
+        ax.tick_params(labelsize=9)
+        ax.grid(alpha=0.3)
 
-        except ImportError:
-            plt.text(0.5, 0.5, "TSNE not available", ha="center", va="center")
-            plt.title("2D Embedding Visualization")
-
-    def plot_cluster_purity(self):
-        """Plot cluster purity based on file extensions"""
+    def plot_document_type_distribution(self, ax):
+        """Plot document type distribution with better formatting"""
         if not self.document_metadata:
-            plt.text(0.5, 0.5, "No metadata available", ha="center", va="center")
-            plt.title("Cluster Purity by File Type")
-            return
-
-        # Group by cluster and file type
-        cluster_file_types = {}
-        for meta, label in zip(self.document_metadata, self.labels):
-            if label != -1:
-                ext = meta.get("extension", "unknown")
-                cluster_file_types.setdefault(label, Counter())[ext] += 1
-
-        if not cluster_file_types:
-            plt.text(0.5, 0.5, "No clusters found", ha="center", va="center")
-            plt.title("Cluster Purity by File Type")
-            return
-
-        # Calculate purity scores
-        purity_scores = []
-        cluster_ids = []
-
-        for cluster_id, file_counts in cluster_file_types.items():
-            total = sum(file_counts.values())
-            max_count = max(file_counts.values())
-            purity = max_count / total
-            purity_scores.append(purity)
-            cluster_ids.append(cluster_id)
-
-        plt.bar(range(len(cluster_ids)), purity_scores, alpha=0.7, color="lightgreen")
-        plt.xlabel("Cluster ID")
-        plt.ylabel("Purity Score")
-        plt.title("Cluster Purity by File Type")
-        plt.xticks(range(len(cluster_ids)), cluster_ids)
-        plt.ylim(0, 1)
-
-        # Add value labels
-        for i, v in enumerate(purity_scores):
-            plt.text(i, v + 0.02, f"{v:.2f}", ha="center")
-
-    def plot_similarity_heatmap(self):
-        """Plot within-cluster similarity heatmap"""
-        # Sample a subset if too many documents
-        max_docs = 50
-        if len(self.embeddings) > max_docs:
-            indices = np.random.choice(len(self.embeddings), max_docs, replace=False)
-            sample_embeddings = self.embeddings[indices]
-            sample_labels = self.labels[indices]
-        else:
-            sample_embeddings = self.embeddings
-            sample_labels = self.labels
-
-        # Compute similarity matrix
-        similarity_matrix = cosine_similarity(sample_embeddings)
-
-        # Sort by cluster labels
-        sorted_indices = np.argsort(sample_labels)
-        sorted_similarity = similarity_matrix[sorted_indices][:, sorted_indices]
-
-        sns.heatmap(
-            sorted_similarity,
-            cmap="viridis",
-            square=True,
-            cbar_kws={"label": "Cosine Similarity"},
-        )
-        plt.title("Document Similarity Matrix\n(Sorted by Cluster)")
-        plt.xlabel("Document Index")
-        plt.ylabel("Document Index")
-
-    def plot_cluster_coherence(self):
-        """Plot cluster coherence scores"""
-        coherence_scores = []
-        cluster_ids = []
-
-        for cluster_id in set(self.labels):
-            if cluster_id == -1:
-                continue
-
-            cluster_mask = self.labels == cluster_id
-            cluster_embeddings = self.embeddings[cluster_mask]
-
-            if len(cluster_embeddings) > 1:
-                # Calculate average pairwise similarity within cluster
-                similarities = cosine_similarity(cluster_embeddings)
-                # Get upper triangle excluding diagonal
-                upper_tri = similarities[np.triu_indices_from(similarities, k=1)]
-                coherence = np.mean(upper_tri)
-                coherence_scores.append(coherence)
-                cluster_ids.append(cluster_id)
-
-        if not coherence_scores:
-            plt.text(0.5, 0.5, "No clusters found", ha="center", va="center")
-            plt.title("Cluster Coherence")
-            return
-
-        colors = [
-            "green" if score > 0.5 else "orange" if score > 0.3 else "red"
-            for score in coherence_scores
-        ]
-        plt.bar(range(len(cluster_ids)), coherence_scores, color=colors, alpha=0.7)
-        plt.xlabel("Cluster ID")
-        plt.ylabel("Average Intra-cluster Similarity")
-        plt.title("Cluster Coherence Scores")
-        plt.xticks(range(len(cluster_ids)), cluster_ids)
-
-        # Add value labels
-        for i, v in enumerate(coherence_scores):
-            plt.text(i, v + 0.01, f"{v:.3f}", ha="center")
-
-    def plot_document_type_distribution(self):
-        """Plot document type distribution across clusters"""
-        if not self.document_metadata:
-            plt.text(0.5, 0.5, "No metadata available", ha="center", va="center")
-            plt.title("Document Type Distribution")
+            ax.text(
+                0.5,
+                0.5,
+                "No metadata available",
+                ha="center",
+                va="center",
+                transform=ax.transAxes,
+                fontsize=12,
+            )
+            ax.set_title("Document Type Distribution", fontweight="bold", fontsize=11)
             return
 
         # Get file extensions
@@ -488,8 +304,16 @@ class ClusteringEvaluationDashboard:
         # Create matrix: clusters x file types
         cluster_ids = sorted([c for c in set(self.labels) if c != -1])
         if not cluster_ids:
-            plt.text(0.5, 0.5, "No clusters found", ha="center", va="center")
-            plt.title("Document Type Distribution")
+            ax.text(
+                0.5,
+                0.5,
+                "No clusters found",
+                ha="center",
+                va="center",
+                transform=ax.transAxes,
+                fontsize=12,
+            )
+            ax.set_title("Document Type Distribution", fontweight="bold", fontsize=11)
             return
 
         matrix = np.zeros((len(cluster_ids), len(unique_extensions)))
@@ -514,60 +338,215 @@ class ClusteringEvaluationDashboard:
             matrix,
             annot=True,
             fmt=".2f",
-            xticklabels=unique_extensions,
-            yticklabels=cluster_ids,
+            xticklabels=[
+                ext[:8] for ext in unique_extensions
+            ],  # Truncate long extensions
+            yticklabels=[f"C{cid}" for cid in cluster_ids],
             cmap="Blues",
+            ax=ax,
+            cbar_kws={"label": "Proportion"},
         )
-        plt.title("Document Type Distribution\n(Proportion per Cluster)")
-        plt.xlabel("File Extension")
-        plt.ylabel("Cluster ID")
+        ax.set_title(
+            "Document Type Distribution\n(Proportion per Cluster)",
+            fontweight="bold",
+            fontsize=11,
+        )
+        ax.set_xlabel("File Extension", fontsize=10)
+        ax.set_ylabel("Cluster ID", fontsize=10)
+        ax.tick_params(labelsize=9)
 
-    def plot_nearest_neighbor_analysis(self):
-        """Analyze k-nearest neighbors within vs across clusters"""
-        k = min(5, len(self.embeddings) - 1)
-        if k < 1:
-            plt.text(0.5, 0.5, "Insufficient data", ha="center", va="center")
-            plt.title("Nearest Neighbor Analysis")
-            return
+    def plot_umap_embeddings(self, ax):
+        """Plot UMAP embedding visualization"""
+        try:
+            if len(self.embeddings) < 4:
+                ax.text(
+                    0.5,
+                    0.5,
+                    "Too few documents",
+                    ha="center",
+                    va="center",
+                    transform=ax.transAxes,
+                )
+                ax.set_title("UMAP Visualization", fontweight="bold")
+                return
 
-        # Find k-nearest neighbors
-        nbrs = NearestNeighbors(n_neighbors=k + 1, metric="cosine").fit(self.embeddings)
-        distances, indices = nbrs.kneighbors(self.embeddings)
+            # Use UMAP for visualization
+            umap_reducer = UMAP(
+                n_components=2,
+                random_state=42,
+                n_neighbors=min(15, len(self.embeddings) - 1),
+            )
+            embeddings_2d = umap_reducer.fit_transform(self.embeddings)
 
-        # Calculate same-cluster ratios
-        same_cluster_ratios = []
+            # Create scatter plot with better colors
+            unique_labels = sorted(set(self.labels))
+            colors = plt.cm.tab10(np.linspace(0, 1, len(unique_labels)))
 
-        for i, (doc_indices, doc_label) in enumerate(zip(indices, self.labels)):
-            if doc_label == -1:
+            for i, label in enumerate(unique_labels):
+                mask = self.labels == label
+                if label == -1:
+                    ax.scatter(
+                        embeddings_2d[mask, 0],
+                        embeddings_2d[mask, 1],
+                        c="gray",
+                        alpha=0.6,
+                        s=30,
+                        label=f"Noise ({np.sum(mask)})",
+                    )
+                else:
+                    ax.scatter(
+                        embeddings_2d[mask, 0],
+                        embeddings_2d[mask, 1],
+                        c=[colors[i]],
+                        alpha=0.7,
+                        s=50,
+                        label=f"Cluster {label} ({np.sum(mask)})",
+                    )
+
+            ax.set_title("UMAP Visualization", fontweight="bold")
+            ax.set_xlabel("UMAP 1")
+            ax.set_ylabel("UMAP 2")
+            ax.legend(bbox_to_anchor=(1.05, 1), loc="upper left", fontsize=8)
+            ax.grid(alpha=0.3)
+
+        except Exception as e:
+            ax.text(
+                0.5,
+                0.5,
+                f"UMAP error: {str(e)[:50]}...",
+                ha="center",
+                va="center",
+                transform=ax.transAxes,
+            )
+            ax.set_title("UMAP Visualization", fontweight="bold")
+
+    def plot_cluster_coherence(self, ax):
+        """Plot cluster coherence scores with improved styling"""
+        coherence_scores = []
+        cluster_ids = []
+
+        for cluster_id in set(self.labels):
+            if cluster_id == -1:
                 continue
 
-            # Skip self (first neighbor)
-            neighbor_labels = self.labels[doc_indices[1:]]
-            same_cluster_count = np.sum(neighbor_labels == doc_label)
-            same_cluster_ratio = same_cluster_count / k
-            same_cluster_ratios.append(same_cluster_ratio)
+            cluster_mask = self.labels == cluster_id
+            cluster_embeddings = self.embeddings[cluster_mask]
 
-        if not same_cluster_ratios:
-            plt.text(0.5, 0.5, "No valid clusters", ha="center", va="center")
-            plt.title("Nearest Neighbor Analysis")
+            if len(cluster_embeddings) > 1:
+                # Calculate average pairwise similarity within cluster
+                similarities = cosine_similarity(cluster_embeddings)
+                # Get upper triangle excluding diagonal
+                upper_tri = similarities[np.triu_indices_from(similarities, k=1)]
+                coherence = np.mean(upper_tri)
+                coherence_scores.append(coherence)
+                cluster_ids.append(cluster_id)
+
+        if not coherence_scores:
+            ax.text(
+                0.5,
+                0.5,
+                "No clusters found",
+                ha="center",
+                va="center",
+                transform=ax.transAxes,
+                fontsize=12,
+            )
+            ax.set_title("Cluster Coherence", fontweight="bold", fontsize=11)
             return
 
-        plt.hist(
-            same_cluster_ratios, bins=20, alpha=0.7, color="purple", edgecolor="black"
-        )
-        plt.axvline(
-            np.mean(same_cluster_ratios),
-            color="red",
-            linestyle="--",
-            label=f"Mean: {np.mean(same_cluster_ratios):.3f}",
-        )
-        plt.xlabel("Fraction of Same-Cluster Neighbors")
-        plt.ylabel("Number of Documents")
-        plt.title(f"K-Nearest Neighbor Analysis (k={k})")
-        plt.legend()
+        # Color coding based on coherence quality
+        colors = []
+        for score in coherence_scores:
+            if score > 0.7:
+                colors.append("#2E8B57")  # Sea Green
+            elif score > 0.5:
+                colors.append("#FF8C00")  # Dark Orange
+            else:
+                colors.append("#DC143C")  # Crimson
 
-    def plot_cluster_quality_scores(self):
-        """Plot individual cluster quality scores"""
+        bars = ax.bar(
+            range(len(cluster_ids)),
+            coherence_scores,
+            color=colors,
+            alpha=0.8,
+            edgecolor="black",
+            linewidth=1,
+        )
+        ax.set_xlabel("Cluster ID", fontsize=10)
+        ax.set_ylabel("Avg Intra-cluster Similarity", fontsize=10)
+        ax.set_title("Cluster Coherence Scores", fontweight="bold", fontsize=11)
+        ax.set_xticks(range(len(cluster_ids)))
+        ax.set_xticklabels([f"C{cid}" for cid in cluster_ids], fontsize=9)
+        ax.tick_params(axis="y", labelsize=9)
+        ax.grid(axis="y", alpha=0.3)
+
+        # Add value labels with better positioning
+        for bar, score in zip(bars, coherence_scores):
+            height = bar.get_height()
+            ax.text(
+                bar.get_x() + bar.get_width() / 2,
+                height + 0.005,
+                f"{score:.3f}",
+                ha="center",
+                va="bottom",
+                fontweight="bold",
+                fontsize=8,
+            )
+
+        # Add horizontal reference lines
+        ax.axhline(y=0.7, color="green", linestyle="--", alpha=0.5, linewidth=1)
+        ax.axhline(y=0.5, color="orange", linestyle="--", alpha=0.5, linewidth=1)
+
+    def plot_similarity_heatmap(self, ax):
+        """Plot within-cluster similarity heatmap with better formatting"""
+        # Sample a subset if too many documents
+        max_docs = 25
+        if len(self.embeddings) > max_docs:
+            indices = np.random.choice(len(self.embeddings), max_docs, replace=False)
+            sample_embeddings = self.embeddings[indices]
+            sample_labels = self.labels[indices]
+        else:
+            sample_embeddings = self.embeddings
+            sample_labels = self.labels
+
+        # Compute similarity matrix
+        similarity_matrix = cosine_similarity(sample_embeddings)
+
+        # Sort by cluster labels
+        sorted_indices = np.argsort(sample_labels)
+        sorted_similarity = similarity_matrix[sorted_indices][:, sorted_indices]
+        sorted_labels = sample_labels[sorted_indices]
+
+        # Create heatmap with better formatting
+        im = sns.heatmap(
+            sorted_similarity,
+            cmap="viridis",
+            square=True,
+            cbar_kws={"label": "Cosine Similarity", "shrink": 0.8},
+            ax=ax,
+            xticklabels=False,
+            yticklabels=False,
+        )
+
+        ax.set_title(
+            "Document Similarity Matrix\n(Sorted by Cluster)",
+            fontweight="bold",
+            fontsize=11,
+        )
+        ax.set_xlabel("Document Index", fontsize=10)
+        ax.set_ylabel("Document Index", fontsize=10)
+
+        # Add cluster boundaries
+        prev_label = sorted_labels[0]
+        boundary_pos = 0
+        for i, label in enumerate(sorted_labels):
+            if label != prev_label:
+                ax.axhline(y=i, color="white", linewidth=2)
+                ax.axvline(x=i, color="white", linewidth=2)
+                prev_label = label
+
+    def plot_individual_cluster_quality(self, ax):
+        """Plot individual cluster quality scores with improved visualization"""
         cluster_scores = {}
 
         for cluster_id in set(self.labels):
@@ -586,107 +565,156 @@ class ClusteringEvaluationDashboard:
                 cosine_similarity([emb], [centroid])[0, 0] for emb in cluster_embeddings
             ]
             compactness = np.mean(distances_to_centroid)
-
             cluster_scores[cluster_id] = compactness
 
         if not cluster_scores:
-            plt.text(0.5, 0.5, "No clusters found", ha="center", va="center")
-            plt.title("Individual Cluster Quality")
+            ax.text(
+                0.5,
+                0.5,
+                "No clusters found",
+                ha="center",
+                va="center",
+                transform=ax.transAxes,
+                fontsize=12,
+            )
+            ax.set_title("Individual Cluster Quality", fontweight="bold", fontsize=11)
             return
 
         clusters, scores = zip(*sorted(cluster_scores.items()))
-        colors = [
-            "green" if score > 0.7 else "orange" if score > 0.5 else "red"
-            for score in scores
-        ]
 
-        plt.bar(range(len(clusters)), scores, color=colors, alpha=0.7)
-        plt.xlabel("Cluster ID")
-        plt.ylabel("Avg Similarity to Centroid")
-        plt.title("Individual Cluster Quality Scores")
-        plt.xticks(range(len(clusters)), clusters)
+        # Color coding based on quality
+        colors = []
+        for score in scores:
+            if score > 0.7:
+                colors.append("#2E8B57")  # Sea Green
+            elif score > 0.5:
+                colors.append("#FF8C00")  # Dark Orange
+            else:
+                colors.append("#DC143C")  # Crimson
 
-        # Add value labels
-        for i, v in enumerate(scores):
-            plt.text(i, v + 0.01, f"{v:.3f}", ha="center")
+        bars = ax.bar(
+            range(len(clusters)),
+            scores,
+            color=colors,
+            alpha=0.8,
+            edgecolor="black",
+            linewidth=1,
+        )
+        ax.set_xlabel("Cluster ID", fontsize=10)
+        ax.set_ylabel("Avg Similarity to Centroid", fontsize=10)
+        ax.set_title("Individual Cluster Quality", fontweight="bold", fontsize=11)
+        ax.set_xticks(range(len(clusters)))
+        ax.set_xticklabels([f"C{cid}" for cid in clusters], fontsize=9)
+        ax.tick_params(axis="y", labelsize=9)
+        ax.grid(axis="y", alpha=0.3)
 
-    def plot_summary_table(self, metrics):
-        """Plot summary statistics table"""
-        plt.axis("off")
+        # Add value labels with better positioning
+        for bar, score in zip(bars, scores):
+            height = bar.get_height()
+            ax.text(
+                bar.get_x() + bar.get_width() / 2,
+                height + 0.005,
+                f"{score:.3f}",
+                ha="center",
+                va="bottom",
+                fontweight="bold",
+                fontsize=8,
+            )
 
-        # Prepare data for table
+        # Add reference lines
+        ax.axhline(y=0.7, color="green", linestyle="--", alpha=0.5, linewidth=1)
+        ax.axhline(y=0.5, color="orange", linestyle="--", alpha=0.5, linewidth=1)
+
+    def plot_summary_statistics(self, ax, metrics):
+        """Plot summary statistics with improved table formatting"""
+        ax.axis("off")
+
+        # Prepare data for table with better formatting
         table_data = [
-            ["Metric", "Value", "Interpretation"],
             [
                 "Silhouette Score",
                 f"{metrics.get('silhouette_score', 0):.4f}",
-                "Good: > 0.5, Poor: < 0.25",
-            ],
-            [
-                "Calinski-Harabasz",
-                f"{metrics.get('calinski_harabasz_score', 0):.2f}",
-                "Higher is better",
+                "Excellent"
+                if metrics.get("silhouette_score", 0) > 0.7
+                else "Good"
+                if metrics.get("silhouette_score", 0) > 0.5
+                else "Fair"
+                if metrics.get("silhouette_score", 0) > 0.25
+                else "Poor",
             ],
             [
                 "Davies-Bouldin",
                 f"{metrics.get('davies_bouldin_score', 0):.4f}",
-                "Lower is better",
+                "Excellent"
+                if metrics.get("davies_bouldin_score", float("inf")) < 0.5
+                else "Good"
+                if metrics.get("davies_bouldin_score", float("inf")) < 1.0
+                else "Fair"
+                if metrics.get("davies_bouldin_score", float("inf")) < 1.5
+                else "Poor",
             ],
+            ["# Clusters", f"{metrics.get('n_clusters', 0)}", ""],
             [
-                "Number of Clusters",
-                f"{metrics.get('n_clusters', 0)}",
-                "Depends on data",
+                "Noise Ratio",
+                f"{metrics.get('noise_ratio', 0):.1%}",
+                "Good"
+                if metrics.get("noise_ratio", 0) < 0.1
+                else "Fair"
+                if metrics.get("noise_ratio", 0) < 0.3
+                else "High",
             ],
-            ["Noise Ratio", f"{metrics.get('noise_ratio', 0):.3f}", "Lower is better"],
             [
                 "Separation Ratio",
                 f"{metrics.get('separation_ratio', 0):.3f}",
-                "Higher is better",
+                "Good"
+                if metrics.get("separation_ratio", 0) > 2.0
+                else "Fair"
+                if metrics.get("separation_ratio", 0) > 1.0
+                else "Poor",
             ],
-            [
-                "Avg Cluster Size",
-                f"{metrics.get('avg_cluster_size', 0):.1f}",
-                "Balanced is better",
-            ],
+            ["Avg Cluster Size", f"{metrics.get('avg_cluster_size', 0):.1f}", ""],
         ]
 
-        table = plt.table(
-            cellText=table_data[1:],
-            colLabels=table_data[0],
+        # Create table with improved styling
+        table = ax.table(
+            cellText=table_data,
+            colLabels=["Metric", "Value", "Quality"],
             cellLoc="center",
             loc="center",
             bbox=[0, 0, 1, 1],
         )
         table.auto_set_font_size(False)
         table.set_fontsize(9)
-        table.scale(1.2, 1.5)
+        table.scale(1, 1.8)
 
-        # Color code the values
-        for i in range(1, len(table_data)):
-            if "Silhouette" in table_data[i][0]:
-                val = float(table_data[i][1])
-                color = (
-                    "lightgreen"
-                    if val > 0.5
-                    else "lightyellow"
-                    if val > 0.25
-                    else "lightcoral"
-                )
-                table[(i, 1)].set_facecolor(color)
-            elif "Noise Ratio" in table_data[i][0]:
-                val = float(table_data[i][1])
-                color = (
-                    "lightgreen"
-                    if val < 0.1
-                    else "lightyellow"
-                    if val < 0.3
-                    else "lightcoral"
-                )
-                table[(i, 1)].set_facecolor(color)
+        # Enhanced table styling
+        for i in range(len(table_data) + 1):  # +1 for header
+            for j in range(3):
+                cell = table[(i, j)]
+                if i == 0:  # Header row
+                    cell.set_facecolor("#2E4057")
+                    cell.set_text_props(weight="bold", color="white")
+                    cell.set_edgecolor("white")
+                    cell.set_linewidth(2)
+                else:
+                    cell.set_edgecolor("gray")
+                    cell.set_linewidth(1)
+                    if j == 2:  # Quality column
+                        quality = table_data[i - 1][2]
+                        if quality == "Excellent":
+                            cell.set_facecolor("#90EE90")
+                        elif quality == "Good":
+                            cell.set_facecolor("#98FB98")
+                        elif quality == "Fair":
+                            cell.set_facecolor("#FFFFE0")
+                        elif quality in ["Poor", "High"]:
+                            cell.set_facecolor("#FFB6C1")
+                        else:
+                            cell.set_facecolor("white")
+                    else:
+                        cell.set_facecolor("#F8F8FF" if i % 2 == 0 else "white")
 
-        plt.title(
-            "Clustering Summary Statistics", y=0.9, fontsize=14, fontweight="bold"
-        )
+        ax.set_title("Summary Statistics", fontweight="bold", fontsize=11, pad=15)
 
     def generate_text_report(self, metrics):
         """Generate a text-based evaluation report"""
@@ -733,28 +761,6 @@ class ClusteringEvaluationDashboard:
             )
         )
 
-        report.append("")
-        report.append("RECOMMENDATIONS:")
-        report.append("-" * 20)
-
-        # Generate recommendations based on metrics
-        if metrics.get("silhouette_score", 0) < 0.25:
-            report.append("• Consider different embedding models or preprocessing")
-            report.append("• Try different clustering algorithms")
-            report.append("• Check if documents are too similar or too diverse")
-
-        if metrics.get("noise_ratio", 0) > 0.3:
-            report.append(
-                "• High noise ratio - consider relaxing clustering parameters"
-            )
-            report.append("• Documents might be too diverse for current approach")
-
-        if metrics.get("cluster_size_ratio", 1) > 10:
-            report.append(
-                "• Imbalanced clusters - consider different clustering parameters"
-            )
-            report.append("• Some clusters might be too large or too small")
-
         return "\n".join(report)
 
 
@@ -763,7 +769,7 @@ def evaluate_clustering_system(clusterer):
     Main function to evaluate the clustering system
 
     Args:
-        clusterer: Instance of ImprovedDocumentClustering after running
+        clusterer: Instance of DocumentClustering after running
     """
     if not hasattr(clusterer, "labels") or len(clusterer.labels) == 0:
         print("No clustering results found. Run clustering first.")
