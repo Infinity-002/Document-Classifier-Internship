@@ -18,12 +18,12 @@ nltk.download("stopwords")
 STOP_WORDS = set(stopwords.words("english"))
 
 # ======= CONFIG =======
-MODEL_PATH = "doc2vec_agnews.bin"
-CLUSTER_STATE_PATH = "cluster_state.json"
+MODEL_PATH = "./d2v_workflow/doc2vec_agnews.bin"
+CLUSTER_STATE_PATH = "./d2v_workflow/cluster_state.json"
 DOCUMENTS_DIR = "documents"
-CLUSTERED_OUTPUT = "named_clusters"
+CLUSTERED_OUTPUT = "d2v_clusters"
 SIMILARITY_THRESHOLD = 0.75
-PICKLE_OUTPUT = "clustering_results.pkl"
+PICKLE_OUTPUT = "./d2v_workflow/clustering_results.pkl"
 # ======================
 
 # Persistent token storage for each cluster

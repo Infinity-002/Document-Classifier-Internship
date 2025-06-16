@@ -13,4 +13,8 @@ cc.en.300.bin
 old/
 
 documents
-clusters
+d2v_clusters
+st_clusters
+
+d2v_workflow/cluster_state.json
+d2v_workflow/clustering_results.pkl
