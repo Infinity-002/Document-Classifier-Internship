@@ -15,6 +15,7 @@ old/
 documents
 d2v_clusters
 st_clusters
+clusters_tsne.png
 
 d2v_workflow/cluster_state.json
 d2v_workflow/clustering_results.pkl

@@ -64,7 +64,7 @@ def preprocess_text(text):
 
 def assign_cluster(vector, tokens, cluster_centroids):
     if not cluster_centroids:
-        name = f"Cluster_1"
+        name = "Cluster_1"
         cluster_centroids[name] = vector
         cluster_tokens[name] = tokens
         return name
