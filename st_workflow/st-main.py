@@ -1,6 +1,5 @@
-from document_clustering import ImprovedDocumentClustering
-from evaluation_dashboard import evaluate_clustering_system
-
+from st_workflow.st_document_clustering import ImprovedDocumentClustering
+from st_workflow.st_evaluation_dashboard import evaluate_clustering_system
 # Basic usage
 clusterer = ImprovedDocumentClustering("../documents", "../st-clusters")
 
