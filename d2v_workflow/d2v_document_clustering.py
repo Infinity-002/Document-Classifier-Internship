@@ -1,6 +1,7 @@
 import os
 import json
 import pickle
+import shutil
 import numpy as np
 from pathlib import Path
 from gensim.models import Doc2Vec
@@ -86,12 +87,12 @@ def rename_clusters(cluster_tokens):
         renamed[cluster_name] = readable_name
     return renamed
 
-def move_to_cluster(file_path, cluster_name, name_map):
+def copy_to_cluster(file_path, cluster_name, name_map):
     true_name = name_map.get(cluster_name, cluster_name)
     dest_folder = Path(CLUSTERED_OUTPUT) / true_name
     dest_folder.mkdir(parents=True, exist_ok=True)
     dest_file = dest_folder / file_path.name
-    file_path.rename(dest_file)
+    shutil.copy2(file_path, dest_file)
 
 def save_for_evaluation(file_cluster_map, renamed_clusters, file_vectors):
     data_to_save = {
@@ -111,34 +112,36 @@ def process_documents():
     file_vectors = []
 
     for file_path in sorted(Path(DOCUMENTS_DIR).glob("*")):
-        print(f"\n📄 Processing: {file_path.name}")
+        print(f"\nProcessing: {file_path.name}")
         try:
             text = extract_text(file_path)
             tokens = preprocess_text(text)
             if not tokens:
-                print("⚠️ No valid content found. Skipping.")
+                print("No valid content found. Skipping.")
                 continue
 
             vector = model.infer_vector(tokens, epochs=20)
             cluster_name = assign_cluster(vector, tokens, cluster_centroids)
             file_cluster_map[file_path] = cluster_name
             file_vectors.append(vector)
-            print(f"✅ Assigned to temporary cluster: {cluster_name}")
+            print(f"Assigned to temporary cluster: {cluster_name}")
         except Exception as e:
-            print(f"❌ Failed to process {file_path.name}: {e}")
+            print(f"Failed to process {file_path.name}: {e}")
 
     # Rename clusters for interpretability
     renamed_clusters = rename_clusters(cluster_tokens)
 
-    # Move files into folders
+    # Copy files into cluster folders
     for file_path, old_cluster in file_cluster_map.items():
-        move_to_cluster(file_path, old_cluster, renamed_clusters)
+        copy_to_cluster(file_path, old_cluster, renamed_clusters)
 
     # Save cluster state and evaluation data
     save_clusters(cluster_centroids, CLUSTER_STATE_PATH)
     save_for_evaluation(file_cluster_map, renamed_clusters, file_vectors)
 
-    print("\n✅ All documents processed, clustered, and saved.")
+    print("\nAll documents processed, clustered, and saved.")
+    print(f"Original files remain in {DOCUMENTS_DIR}")
+    print(f"Clustered copies created in {CLUSTERED_OUTPUT}")
 
 # Entry point
 if __name__ == "__main__":
