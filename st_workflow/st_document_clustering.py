@@ -3,26 +3,21 @@ from sentence_transformers import SentenceTransformer
 from pdfminer.high_level import extract_text as extract_pdf_text
 from docx import Document as DocxDocument
 from bs4 import BeautifulSoup
-from sklearn.cluster import KMeans, DBSCAN, AgglomerativeClustering
+from sklearn.cluster import KMeans, AgglomerativeClustering
 from sklearn.metrics import silhouette_score, calinski_harabasz_score, davies_bouldin_score
 from sklearn.manifold import TSNE
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.decomposition import PCA
-from sklearn.preprocessing import StandardScaler
 import numpy as np
 import shutil
-from hdbscan import HDBSCAN, approximate_predict
-from sklearn.preprocessing import normalize
+from hdbscan import HDBSCAN
 import matplotlib.pyplot as plt
-import seaborn as sns
 from umap import UMAP
 import networkx as nx
-from sklearn.neighbors import NearestNeighbors
 from transformers import pipeline
 import re
 import nltk
 from collections import Counter
-import logging
 
 # Download required NLTK data
 try:
@@ -53,7 +48,7 @@ class ImprovedDocumentClustering:
                                      max_length=50, min_length=10, do_sample=False)
         except:
             self.summarizer = None
-            print("⚠️ Could not load summarizer. Will use TF-IDF for cluster summaries.")
+            print("Could not load summarizer. Will use TF-IDF for cluster summaries.")
 
     def preprocess_text(self, text: str) -> str:
         """Enhanced text preprocessing"""
@@ -119,12 +114,12 @@ class ImprovedDocumentClustering:
         for path in self.file_paths:
             text, metadata = self.extract_text(path)
             if not text.strip():
-                print(f"⚠️ No usable text in: {path.name}")
+                print(f"No usable text in: {path.name}")
                 continue
             
             processed_text = self.preprocess_text(text)
             if len(processed_text.split()) < 10:
-                print(f"⚠️ Skipping too short document: {path.name}")
+                print(f"Skipping too short document: {path.name}")
                 continue
             
             # Include filename in the text for context
@@ -159,9 +154,9 @@ class ImprovedDocumentClustering:
         
         if self.embeddings:
             self.embeddings = np.array(self.embeddings)
-            print(f"✅ Generated embeddings for {len(self.embeddings)} documents")
+            print(f"Generated embeddings for {len(self.embeddings)} documents")
         else:
-            print("⚠️ No embeddings generated")
+            print("No embeddings generated")
             self.embeddings = np.array([])
 
     def reduce_dimensionality(self, method='umap', n_components=50):
@@ -230,7 +225,7 @@ class ImprovedDocumentClustering:
                     'clusterer': clusterer
                 }
             except Exception as e:
-                print(f"⚠️ HDBSCAN with min_cluster_size={min_cluster_size} failed: {e}")
+                print(f"HDBSCAN with min_cluster_size={min_cluster_size} failed: {e}")
         
         # KMeans with different k values
         max_k = min(10, len(embeddings) - 1)
@@ -245,7 +240,7 @@ class ImprovedDocumentClustering:
                     'clusterer': kmeans
                 }
             except Exception as e:
-                print(f"⚠️ KMeans with k={k} failed: {e}")
+                print(f"KMeans with k={k} failed: {e}")
         
         # Agglomerative clustering
         for linkage in ['ward', 'complete', 'average']:
@@ -260,7 +255,7 @@ class ImprovedDocumentClustering:
                         'clusterer': agg
                     }
                 except Exception as e:
-                    print(f"⚠️ Agglomerative {linkage} with k={k} failed: {e}")
+                    print(f"Agglomerative {linkage} with k={k} failed: {e}")
         
         # Select best method based on silhouette score
         best_method = max(methods.items(), 
@@ -363,12 +358,12 @@ class ImprovedDocumentClustering:
             if source_file.exists():
                 shutil.copy(source_file, target_folder / filename)
         
-        print(f"✅ Documents organized into {len(set(self.labels))} clusters")
+        print(f"Documents organized into {len(set(self.labels))} clusters")
 
     def visualize_clusters(self, save_plot=True):
         """Enhanced visualization with multiple methods"""
         if len(self.embeddings) < 3:
-            print("⚠️ Not enough samples to visualize.")
+            print("Not enough samples to visualize.")
             return
         
         fig, axes = plt.subplots(1, 2, figsize=(15, 6))
@@ -385,7 +380,7 @@ class ImprovedDocumentClustering:
             axes[0].set_xlabel("UMAP 1")
             axes[0].set_ylabel("UMAP 2")
         except Exception as e:
-            print(f"⚠️ UMAP visualization failed: {e}")
+            print(f"UMAP visualization failed: {e}")
         
         # t-SNE visualization
         try:
@@ -399,7 +394,7 @@ class ImprovedDocumentClustering:
             axes[1].set_xlabel("t-SNE 1")
             axes[1].set_ylabel("t-SNE 2")
         except Exception as e:
-            print(f"⚠️ t-SNE visualization failed: {e}")
+            print(f"t-SNE visualization failed: {e}")
         
         plt.tight_layout()
         
@@ -413,7 +408,7 @@ class ImprovedDocumentClustering:
         cluster_names = self.generate_cluster_names(self.labels)
         cluster_stats = Counter(self.labels)
         
-        print("\n📊 Cluster Summary:")
+        print("\nCluster Summary:")
         print("=" * 50)
         
         for label in sorted(set(self.labels)):
@@ -442,7 +437,7 @@ class ImprovedDocumentClustering:
         self.embed_documents(embedding_strategy=embedding_strategy)
         
         if len(self.embeddings) == 0:
-            print("⚠️ No embeddings generated. Check file content.")
+            print("No embeddings generated. Check file content.")
             return
         
         # Step 2: Optional dimensionality reduction
@@ -455,7 +450,7 @@ class ImprovedDocumentClustering:
         
         # Step 3: Try graph-based clustering
         if try_graph_clustering:
-            print("🔍 Trying graph-based clustering...")
+            print("Trying graph-based clustering...")
             graph_labels = self.create_similarity_graph(embeddings_for_clustering)
             if len(set(graph_labels)) > 1:
                 graph_score = self.evaluate_clustering(embeddings_for_clustering, graph_labels)
@@ -472,4 +467,4 @@ class ImprovedDocumentClustering:
         self.visualize_clusters()
         self.print_cluster_summary()
         
-        print("✅ Clustering pipeline completed!")
+        print("Clustering pipeline completed!")

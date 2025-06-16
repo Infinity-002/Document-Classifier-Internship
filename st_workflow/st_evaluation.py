@@ -2,9 +2,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 from sklearn.metrics import silhouette_score, calinski_harabasz_score, davies_bouldin_score, silhouette_samples
-from sklearn.metrics.pairwise import cosine_similarity, euclidean_distances
+from sklearn.metrics.pairwise import cosine_similarity
 from collections import Counter
-import pandas as pd
 from scipy.spatial.distance import cdist
 from sklearn.neighbors import NearestNeighbors
 import warnings
