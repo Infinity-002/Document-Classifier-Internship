@@ -109,7 +109,7 @@ class ImprovedDocumentClustering:
 
     def embed_documents(self, use_chunking=True, embedding_strategy='mean_pooling'):
         """Enhanced document embedding with multiple strategies"""
-        print("🔍 Embedding documents...")
+        print("Embedding documents...")
         
         for path in self.file_paths:
             text, metadata = self.extract_text(path)
@@ -261,7 +261,7 @@ class ImprovedDocumentClustering:
         best_method = max(methods.items(), 
                          key=lambda x: x[1]['score']['silhouette'])
         
-        print(f"🏆 Best method: {best_method[0]} with silhouette score: {best_method[1]['score']['silhouette']:.4f}")
+        print(f"Best method: {best_method[0]} with silhouette score: {best_method[1]['score']['silhouette']:.4f}")
         
         return best_method[1]['labels'], best_method[1]['clusterer']
 
@@ -343,7 +343,7 @@ class ImprovedDocumentClustering:
         cluster_names = self.generate_cluster_names(self.labels)
         cluster_stats = Counter(self.labels)
         
-        print("\n📁 Creating cluster folders...")
+        print("\nCreating cluster folders...")
         for i, (label, filename) in enumerate(zip(self.labels, [meta['filename'] for meta in self.document_metadata])):
             if label == -1:
                 folder_name = "unclustered"
@@ -431,7 +431,7 @@ class ImprovedDocumentClustering:
     def run(self, use_dimensionality_reduction=True, dim_reduction_method='umap', 
             embedding_strategy='weighted_mean', try_graph_clustering=False):
         """Enhanced run method with more options"""
-        print("🚀 Starting improved document clustering pipeline...")
+        print("Starting improved document clustering pipeline...")
         
         # Step 1: Embed documents
         self.embed_documents(embedding_strategy=embedding_strategy)
@@ -457,7 +457,7 @@ class ImprovedDocumentClustering:
                 print(f"Graph clustering silhouette score: {graph_score['silhouette']:.4f}")
         
         # Step 4: Multiple clustering methods
-        print("🔍 Trying multiple clustering methods...")
+        print("Trying multiple clustering methods...")
         self.labels, self.best_clusterer = self.cluster_with_multiple_methods(embeddings_for_clustering)
         
         # Step 5: Save results
