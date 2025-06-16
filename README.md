@@ -2,8 +2,8 @@
 
 This project provides tools for unsupervised document clustering using NLP based approaches. It includes:
 
-- 📁 `st_workflow`: Sentence transformer based document clustering
-- 🔬 `d2v_workflow`: Document2Vec-based document clustering
+- `st_workflow`: Sentence transformer based document clustering
+- `d2v_workflow`: Document2Vec-based document clustering
 
 ## Getting Started
 
