@@ -1,4 +1,4 @@
-# Hybrid NLP-Based Document Classifier 
+# NLP-Based Document Classifier 
 
 This project provides tools for unsupervised document clustering using NLP based approaches. It includes:
 
