@@ -20,7 +20,7 @@ nltk.download("stopwords")
 STOP_WORDS = set(stopwords.words("english"))
 
 # ======= CONFIG =======
-MODEL_PATH = "./d2v_workflow/doc2vec_agnews.bin"
+MODEL_PATH = "./d2v_workflow/model/doc2vec_agnews.bin"
 CLUSTER_STATE_PATH = "./d2v_workflow/cluster_state.json"
 DOCUMENTS_DIR = "documents"
 CLUSTERED_OUTPUT = "d2v_clusters"
