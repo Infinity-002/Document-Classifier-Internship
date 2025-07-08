@@ -6,7 +6,7 @@ from pathlib import Path
 import nltk
 import numpy as np
 from bs4 import BeautifulSoup
-from docx import Document as DocxDocument
+from docx import Document
 from hdbscan import HDBSCAN
 from pdfminer.high_level import extract_text as extract_pdf_text
 from sentence_transformers import SentenceTransformer
@@ -70,8 +70,8 @@ class DocumentClustering:
             elif suffix == ".pdf":
                 text = extract_pdf_text(str(path))
             elif suffix == ".docx":
-                doc = DocxDocument(path)
-                text = "\n".join(p.text for p in doc.paragraphs)
+                doc = Document(str(path))
+                text =  "\n".join([para.text for para in doc.paragraphs])
             elif suffix in {".html", ".htm"}:
                 html = path.read_text(encoding="utf-8")
                 soup = BeautifulSoup(html, "lxml")
