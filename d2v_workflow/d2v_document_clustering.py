@@ -13,6 +13,7 @@ from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from pdfminer.high_level import extract_text as extract_pdf_text
 from sklearn.metrics.pairwise import cosine_similarity
+from d2v_evaluation import evaluate_clustering_system
 
 nltk.download("punkt")
 nltk.download("stopwords")
@@ -150,6 +151,9 @@ def process_documents():
     # Save cluster state and evaluation data
     save_clusters(cluster_centroids, CLUSTER_STATE_PATH)
     save_for_evaluation(file_cluster_map, renamed_clusters, file_vectors)
+
+    print("\nStarting evaluation of the clustering results...")
+    evaluate_clustering_system(PICKLE_OUTPUT, CLUSTERED_OUTPUT)
 
     print("\nAll documents processed, clustered, and saved.")
     print(f"Original files remain in {DOCUMENTS_DIR}")
